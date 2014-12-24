@@ -23,7 +23,7 @@ movies_map = ''
 originals_map = ''
 tv_map = ''
 
-crackler_version = '0.0.1'
+crackler_version = '0.1.0'
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
