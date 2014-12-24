@@ -167,4 +167,3 @@ elif mode[0] == 'view_episodes':
     # retrieve_play_url(args_ar['v_id'][0])
 
     xbmcplugin.endOfDirectory(addon_handle)
-
