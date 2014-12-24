@@ -1,13 +1,13 @@
 Crackler
 ========
 
-A no-frills Kodi (XBMC) plugin for Crackle!
+A no-frills Kodi/XBMC plugin for Crackle!
 
 Installation Instructions:
 
 Download the latest release of the plugin zip file at https://github.com/eignxing/Crackler/releases
 
-In Kodi (XBMC), navigate to System->Settings and click "Add-ons."
+In XBMC navigate to System->Settings and click "Add-ons."
 
 Select "Install from zip file" and choose the zip file you just downloaded.
 
