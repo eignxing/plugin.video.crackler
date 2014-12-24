@@ -1,4 +1,4 @@
 Crackler
 ========
 
-A Kodi (XBMC) plugin for Crackle!
+A no-frills Kodi (XBMC) plugin for Crackle!
