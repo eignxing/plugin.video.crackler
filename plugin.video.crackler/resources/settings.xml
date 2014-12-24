@@ -1,0 +1,3 @@
+<settings>
+	<setting id="view_mode" type="enum" label="Set View Mode For Channels(Confluence only)" values="Default|List|Big List|Thumbnail|Poster Wrap|Fanart|Media Info|Media Info 2" default="0" />
+</settings>
