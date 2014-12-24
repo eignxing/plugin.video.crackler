@@ -5,7 +5,7 @@ A no-frills Kodi (XBMC) plugin for Crackle!
 
 Installation Instructions:
 
-Download the plugin zip file (Open plugin.video.crackler-%.%.%.zip link and choose "View raw").
+Download the latest release of the plugin zip file.
 
 In Kodi (XBMC), navigate to System->Settings and click "Add-ons."
 
