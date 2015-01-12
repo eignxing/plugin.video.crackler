@@ -36,6 +36,10 @@ mode = args.get('mode', None)
 def build_url(query):
     return base_url + '?' + urllib.urlencode(query)
 
+def seconds_to_duration(temp_s):
+    m, s = divmod(int(temp_s), 60)
+    return "%d:%02d" % (m, s)
+
 def add_directory(title, image_url, url):
     li = xbmcgui.ListItem(title, iconImage=image_url)
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
@@ -46,9 +50,11 @@ def add_video_item(title, image_url, file_url, m_index, map_type, video_type):
         li.setProperty('mimetype', 'video')
         li.setProperty('IsPlayable', 'true')
         if video_type == 0:
-            li.setInfo('video', { 'genre': map_type['Entries'][m_index]['Genre'],'year': map_type['Entries'][m_index]['ReleaseYear'],'title': map_type['Entries'][m_index]['Title']})
+            li.setInfo('video', { 'genre': map_type['Entries'][m_index]['Genre'],'year': map_type['Entries'][m_index]['ReleaseYear'],'title': map_type['Entries'][m_index]['Title'], 
+            	'mpaa': map_type['Entries'][m_index]['Rating'], 'plot': map_type['Entries'][m_index]['Description'], 'duration': seconds_to_duration(map_type['Entries'][m_index]['DurationInSeconds'])})
         elif video_type == 1:
-            li.setInfo('video', { 'genre': map_type['Entries'][m_index]['Genre'],'year': map_type['Entries'][m_index]['ReleaseYear'],'title': map_type['Entries'][m_index]['Title']})
+        	li.setInfo('video', { 'genre': map_type['Entries'][m_index]['Genre'],'year': map_type['Entries'][m_index]['ReleaseYear'],'title': map_type['Entries'][m_index]['Title'], 
+            	'mpaa': map_type['Entries'][m_index]['Rating'], 'plot': map_type['Entries'][m_index]['Description']})
         xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
 
 def play_video():
@@ -139,7 +145,7 @@ elif mode[0] == 'play_video':
     retrieve_play_url(args_ar['v_id'][0])
     #print args_ar['mode'][0], args_ar['v_id'][0]
 elif mode[0] == 'view_episodes':
-    print 'len of tv_map: ' + str(len(tv_map))
+    #print 'len of tv_map: ' + str(len(tv_map))
     if len(tv_map) == 0:
         jsonurl = urllib2.urlopen(tv_json_url)
         tv_map = json.loads(jsonurl.read())
@@ -150,8 +156,8 @@ elif mode[0] == 'view_episodes':
 
     if channel_detail_map['status']['messageCodeDescription'] == 'OK':
         object_cnt = int(len(channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList']))
-        print 'found total episodes: '+str(object_cnt)
-        print "args_ar['indx'][0] "+str(args_ar['indx'][0])
+        #print 'found total episodes: '+str(object_cnt)
+        #print "args_ar['indx'][0] "+str(args_ar['indx'][0])
         if object_cnt > 0:
             j = 0
             while j < object_cnt:
