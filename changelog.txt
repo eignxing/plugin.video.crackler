@@ -1,3 +1,9 @@
+v1.0.1
+-Add episode number infolabel for tv shows, add fixes
+
+v1.0.0
+-Add mpaa, plot and duration tags
+
 v0.1.0
 - Release to public
 
