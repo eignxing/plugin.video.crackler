@@ -15,7 +15,6 @@ import datetime
 
 channel_detail_url = 'http://api.crackle.com/Service.svc/channel/%s/folders/us?format=json'
 movies_json_url = 'http://api.crackle.com/Service.svc/browse/movies/full/all/alpha/us?format=json'
-#originals_json_url = 'http://api.crackle.com/Service.svc/browse/originals/full/all/alpha/us?format=json'
 tv_json_url = 'http://api.crackle.com/Service.svc/browse/shows/full/all/alpha/us?format=json'
 base_media_url = 'http://media-%s-am.crackle.com/%s'
 prog = re.compile(r''+'\/.\/.\/.{2}\/.{5}_')
@@ -24,7 +23,7 @@ movies_map = ''
 originals_map = ''
 tv_map = ''
 
-crackler_version = '1.0.2'
+crackler_version = '1.0.3'
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
@@ -128,9 +127,9 @@ def retrieve_play_url(channel_id):
 
                 i += 1
         else:
-            print "crackler playback error: " + int(channel_detail_map['Count'])
+        	xbmc.log("crackler playback error: " + int(channel_detail_map['Count']), level=xbmc.LOGDEBUG)
     else:
-        print "crackler playback error: " + channel_detail_map['status']['messageCodeDescription']
+    	xbmc.log("crackler playback error: " + channel_detail_map['status']['messageCodeDescription'], level=xbmc.LOGDEBUG)
     li = xbmcgui.ListItem(path=play_url)
     xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=li)
 
@@ -158,7 +157,6 @@ elif mode[0] == 'movies_folder':
             while i < object_cnt:
                 add_video_item((movies_map['Entries'][i]['Name']).encode('utf-8'), movies_map['Entries'][i]['OneSheetImage_800_1200'], sys.argv[0]+'?mode=play_video&v_id='+str(movies_map['Entries'][i]['ID']), i, movies_map, 0)
                 i += 1
-            print 'crackler: done listing movie items'
 
     xbmcplugin.endOfDirectory(addon_handle)
     add_sort_methods()

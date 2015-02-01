@@ -1,3 +1,6 @@
+v1.0.3
+-update debug messages
+
 v1.0.2
 -Add additional infotags and basic sorting
 
