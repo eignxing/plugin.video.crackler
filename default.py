@@ -127,9 +127,9 @@ def retrieve_play_url(channel_id):
 
                 i += 1
         else:
-        	xbmc.log("crackler playback error: " + int(channel_detail_map['Count']), level=xbmc.LOGDEBUG)
+        	xbmc.log("crackler playback error: " + str(channel_detail_map['Count']), level=xbmc.LOGDEBUG)
     else:
-    	xbmc.log("crackler playback error: " + channel_detail_map['status']['messageCodeDescription'], level=xbmc.LOGDEBUG)
+    	xbmc.log("crackler playback error: " + str(channel_detail_map['status']['messageCodeDescription']), level=xbmc.LOGDEBUG)
     li = xbmcgui.ListItem(path=play_url)
     xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=li)
 
