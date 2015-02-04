@@ -1,3 +1,6 @@
+v1.0.4
+-fix object key error for playback on certain feature movies
+
 v1.0.3
 -update debug messages
 

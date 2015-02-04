@@ -20,10 +20,9 @@ base_media_url = 'http://media-%s-am.crackle.com/%s'
 prog = re.compile(r''+'\/.\/.\/.{2}\/.{5}_')
 object_cnt = 0
 movies_map = ''
-originals_map = ''
 tv_map = ''
 
-crackler_version = '1.0.3'
+crackler_version = '1.0.4'
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
@@ -33,6 +32,7 @@ mode = args.get('mode', None)
 ########################################################
 ## FUNCTIONS
 ########################################################
+
 def build_url(query):
     return base_url + '?' + urllib.urlencode(query)
 
@@ -121,7 +121,7 @@ def retrieve_play_url(channel_id):
                 if channel_detail_map['FolderList'][i]['Name'] == 'Movie':
                     pre_path = prog.findall(channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['Thumbnail_Wide'])
                     play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-                elif channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['Mediatyp'] == 'Feature Film':
+                elif channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['MediaType'] == 'Feature Film':
                     pre_path = prog.findall(channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['Thumbnail_Wide'])
                     play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
 
