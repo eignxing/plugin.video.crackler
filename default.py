@@ -17,7 +17,6 @@ channel_detail_url = 'http://api.crackle.com/Service.svc/channel/%s/folders/us?f
 movies_json_url = 'http://api.crackle.com/Service.svc/browse/movies/full/all/alpha/us?format=json'
 tv_json_url = 'http://api.crackle.com/Service.svc/browse/shows/full/all/alpha/us?format=json'
 base_media_url = 'http://media-%s-am.crackle.com/%s'
-# omdb_url = 'http://www.omdbapi.com/?t=%s&y=%s&r=json&tomatoes=true'
 prog = re.compile(r''+'\/.\/.\/.{2}\/.{5}_')
 object_cnt = 0
 movies_map = ''
@@ -91,7 +90,6 @@ def add_video_item(title, image_url, file_url, m_index, map_typ, video_typ):
             temp_plot = map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Description']
             temp_tvshowtitle = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['ParentChannelName'])
 
-
         if len(temp_ryear) == 4:
             li.setInfo('video', {'year': int(temp_ryear)})
         elif temp_ryear.find('/') != -1:
@@ -144,25 +142,6 @@ def retrieve_play_url(channel_id):
     li = xbmcgui.ListItem(path=play_url)
     xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=li)
 
-# def get_rating():
-#     object_cnt = int(movies_map['Count'])
-#     if object_cnt > 0:
-#         temp_ryear = ''
-#         temp_title = ''
-#         k = 0
-#         while k < object_cnt:
-#             temp_ryear = str(movies_map['Entries'][k]['ReleaseYear'])
-#             temp_title = movies_map['Entries'][k]['Title']
-#             if len(temp_ryear) > 0 and len(temp_title) > 0:
-#                 omdb_url2 = omdb_url % (urllib.quote_plus(temp_title), urllib.quote_plus(temp_ryear))
-#                 xbmc.log("omdb_url: " + str(omdb_url2), level=xbmc.LOGDEBUG)
-#                 jsonurl = urllib2.urlopen(omdb_url2)
-#                 omdb_map = json.loads(jsonurl.read())
-#                 if omdb_map.get('tomatoRating'):
-#                     if omdb_map['tomatoRating'] != 'N/A':
-#                         xbmc.log("rating check: " + str(omdb_map['tomatoRating']), level=xbmc.LOGDEBUG)
-#             k += 1
-
 ########################################################
 ## BODY
 ########################################################
@@ -190,7 +169,6 @@ elif mode[0] == 'movies_folder':
 
     xbmcplugin.endOfDirectory(addon_handle)
 
-
 elif mode[0] == 'tv_folder':
 
     if tv_map['status']['messageCodeDescription'] == 'OK':
@@ -208,7 +186,6 @@ elif mode[0] == 'play_video':
 elif mode[0] == 'view_episodes':
     add_sort_methods(1)
     xbmcplugin.setContent(addon_handle, 'episodes')
-    # if len(tv_map) == 0:
     jsonurl = urllib2.urlopen(tv_json_url)
     tv_map = json.loads(jsonurl.read())
 
