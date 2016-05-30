@@ -182,16 +182,16 @@ elif mode[0] == 'tv_folder':
     xbmcplugin.endOfDirectory(addon_handle)
 
 elif mode[0] == 'play_video':
-    args_ar = urlparse.parse_qs(urlparse.urlparse(sys.argv[0]+sys.argv[2]).query)
-    retrieve_play_url(args_ar['v_id'][0])
+    args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
+    retrieve_play_url(args_ar['v_id'])
 elif mode[0] == 'view_episodes':
     add_sort_methods(1)
     xbmcplugin.setContent(addon_handle, 'episodes')
     jsonurl = urllib2.urlopen(tv_json_url)
     tv_map = json.loads(jsonurl.read())
 
-    args_ar = urlparse.parse_qs(urlparse.urlparse(sys.argv[0]+sys.argv[2]).query)
-    jsonurl = urllib2.urlopen(channel_detail_url % (args_ar['v_id'][0]))
+    args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
+    jsonurl = urllib2.urlopen(channel_detail_url % (args_ar['v_id']))
     channel_detail_map = json.loads(jsonurl.read())
 
     if channel_detail_map['status']['messageCodeDescription'] == 'OK':
@@ -201,6 +201,6 @@ elif mode[0] == 'view_episodes':
             while j < object_cnt:
                 pre_path = prog.findall(channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Thumbnail_Wide'])
                 play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-                add_video_item((channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Title']).encode('utf-8') , tv_map['Entries'][int(args_ar['indx'][0])]['OneSheetImage_800_1200'], play_url, j, channel_detail_map, 1)
+                add_video_item((channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Title']).encode('utf-8') , tv_map['Entries'][int(args_ar['indx'])]['OneSheetImage_800_1200'], play_url, j, channel_detail_map, 1)
                 j += 1
     xbmcplugin.endOfDirectory(addon_handle)
