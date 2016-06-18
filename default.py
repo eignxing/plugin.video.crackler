@@ -19,8 +19,6 @@ tv_json_url = 'http://api.crackle.com/Service.svc/browse/shows/full/all/alpha/us
 base_media_url = 'http://media-%s-am.crackle.com/%s'
 prog = re.compile(r''+'\/.\/.\/.{2}\/.{5}_')
 object_cnt = 0
-movies_map = ''
-tv_map = ''
 
 crackler_version = '1.0.6'
 
@@ -28,11 +26,6 @@ base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
 args = urlparse.parse_qs(sys.argv[2][1:])
 mode = args.get('mode', None)
-
-jsonurl = urllib2.urlopen(movies_json_url)
-movies_map = json.loads(jsonurl.read())
-jsonurl = urllib2.urlopen(tv_json_url)
-tv_map = json.loads(jsonurl.read())
 
 ########################################################
 ## FUNCTIONS
@@ -159,6 +152,8 @@ elif mode[0] == 'movies_folder':
     add_sort_methods(0)
     xbmcplugin.setContent(addon_handle, 'movies')
 
+    jsonurl = urllib2.urlopen(movies_json_url)
+    movies_map = json.loads(jsonurl.read())
     if movies_map['status']['messageCodeDescription'] == 'OK':
         object_cnt = int(movies_map['Count'])
         if object_cnt > 0:
@@ -171,13 +166,14 @@ elif mode[0] == 'movies_folder':
     xbmcplugin.endOfDirectory(addon_handle)
 
 elif mode[0] == 'tv_folder':
-
+    jsonurl = urllib2.urlopen(tv_json_url)
+    tv_map = json.loads(jsonurl.read())
     if tv_map['status']['messageCodeDescription'] == 'OK':
         object_cnt = int(tv_map['Count'])
         if object_cnt > 0:
             i = 0
             while i < object_cnt:
-                add_directory((tv_map['Entries'][i]['Name']).encode('utf-8') , tv_map['Entries'][i]['OneSheetImage_800_1200'], sys.argv[0]+'?mode=view_episodes&indx='+str(i)+'&v_id='+str(tv_map['Entries'][i]['ID']))
+                add_directory((tv_map['Entries'][i]['Name']).encode('utf-8') , tv_map['Entries'][i]['OneSheetImage_800_1200'], sys.argv[0]+'?mode=view_episodes&v_id='+str(tv_map['Entries'][i]['ID']))
                 i += 1
     xbmcplugin.endOfDirectory(addon_handle)
 
@@ -187,8 +183,6 @@ elif mode[0] == 'play_video':
 elif mode[0] == 'view_episodes':
     add_sort_methods(1)
     xbmcplugin.setContent(addon_handle, 'episodes')
-    jsonurl = urllib2.urlopen(tv_json_url)
-    tv_map = json.loads(jsonurl.read())
 
     args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
     jsonurl = urllib2.urlopen(channel_detail_url % (args_ar['v_id']))
@@ -201,6 +195,6 @@ elif mode[0] == 'view_episodes':
             while j < object_cnt:
                 pre_path = prog.findall(channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Thumbnail_Wide'])
                 play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-                add_video_item((channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Title']).encode('utf-8') , tv_map['Entries'][int(args_ar['indx'])]['OneSheetImage_800_1200'], play_url, j, channel_detail_map, 1)
+                add_video_item((channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Title']).encode('utf-8') , channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['OneSheetImage800x1200'], play_url, j, channel_detail_map, 1)
                 j += 1
     xbmcplugin.endOfDirectory(addon_handle)
