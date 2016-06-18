@@ -78,26 +78,6 @@ def add_tv_item(info, file_url):
         li.setInfo('video', { k: v })
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
 
-def retrieve_play_url(channel_id):
-    play_url = ''
-    jsonurl = urllib2.urlopen(channel_detail_url % (channel_id))
-    channel_detail_map = json.loads(jsonurl.read())
-    if channel_detail_map['status']['messageCodeDescription'] == 'OK':
-        for info in channel_detail_map['FolderList']:
-            if info['Name'] == 'Movie':
-                pre_path = prog.findall(info['PlaylistList'][0]['MediaList'][0]['Thumbnail_Wide'])
-                play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-            elif info['PlaylistList'][0]['MediaList'][0]['MediaType'] == 'Feature Film':
-                pre_path = prog.findall(info['PlaylistList'][0]['MediaList'][0]['Thumbnail_Wide'])
-                play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-        else:
-            xbmc.log("crackler playback error: " + str(channel_detail_map['Count']), level=xbmc.LOGDEBUG)
-    else:
-        xbmc.log("crackler playback error: " + str(channel_detail_map['status']['messageCodeDescription']), level=xbmc.LOGDEBUG)
-
-    li = xbmcgui.ListItem(path=play_url)
-    xbmcplugin.setResolvedUrl(handle=addon_handle, succeeded=True, listitem=li)
-
 ########################################################
 ## BODY
 ########################################################
@@ -118,6 +98,21 @@ elif mode == 'movies_folder':
         for info in movies_map['Entries']:
             add_movie_item(info, build_url({'mode': 'play_video', 'v_id': str(info['ID'])}))
     xbmcplugin.endOfDirectory(addon_handle)
+elif mode == 'play_video':
+    # play the selected video
+    play_url = ''
+    jsonurl = urllib2.urlopen(channel_detail_url % (args['v_id']))
+    channel_detail_map = json.loads(jsonurl.read())
+    if channel_detail_map['status']['messageCodeDescription'] == 'OK':
+        for folder in channel_detail_map['FolderList']:
+            for playlist in folder['PlaylistList']:
+                for info in playlist['MediaList']:
+                    if info['MediaType'] == 'Feature Film':
+                        pre_path = prog.findall(info['Thumbnail_Wide'])
+                        play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
+                        break
+    li = xbmcgui.ListItem(path=play_url)
+    xbmcplugin.setResolvedUrl(handle=addon_handle, succeeded=True, listitem=li)
 elif mode == 'tv_folder':
     # show a list of tv shows
     jsonurl = urllib2.urlopen(tv_json_url)
@@ -126,9 +121,6 @@ elif mode == 'tv_folder':
         for info in tv_map['Entries']:
             add_directory(info['Name'].encode('utf-8'), info['OneSheetImage_800_1200'], build_url({'mode': 'view_episodes', 'v_id': str(info['ID'])}))
     xbmcplugin.endOfDirectory(addon_handle)
-elif mode == 'play_video':
-    # play the selected video
-    retrieve_play_url(args['v_id'])
 elif mode == 'view_episodes':
     # show a list of episodes for the selected tv show
     xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_EPISODE)
@@ -138,8 +130,10 @@ elif mode == 'view_episodes':
     jsonurl = urllib2.urlopen(channel_detail_url % (args['v_id']))
     channel_detail_map = json.loads(jsonurl.read())
     if channel_detail_map['status']['messageCodeDescription'] == 'OK':
-        for info in channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList']:
-            pre_path = prog.findall(info['Thumbnail_Wide'])
-            play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-            add_tv_item(info, play_url)
+        for folder in channel_detail_map['FolderList']:
+            for playlist in folder['PlaylistList']:
+                for info in playlist['MediaList']:
+                    pre_path = prog.findall(info['Thumbnail_Wide'])
+                    play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
+                    add_tv_item(info, play_url)
     xbmcplugin.endOfDirectory(addon_handle)
