@@ -6,7 +6,6 @@ import urllib2, urllib
 import urlparse
 import json
 import xbmcgui, xbmcplugin
-from xbmcgui import ListItem
 
 ########################################################
 ## VARS
@@ -16,13 +15,13 @@ channel_detail_url = 'http://api.crackle.com/Service.svc/channel/%s/folders/us?f
 movies_json_url = 'http://api.crackle.com/Service.svc/browse/movies/full/all/alpha/us?format=json'
 tv_json_url = 'http://api.crackle.com/Service.svc/browse/shows/full/all/alpha/us?format=json'
 base_media_url = 'http://media-%s-am.crackle.com/%s'
-prog = re.compile(r''+'\/.\/.\/.{2}\/.{5}_')
+prog = re.compile('\/.\/.\/.{2}\/.{5}_')
 
 crackler_version = '1.0.6'
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
-args = urlparse.parse_qs(sys.argv[2][1:])
+args = dict([ (k, v[0]) for k, v in urlparse.parse_qs(sys.argv[2].replace('?', '')).items() ])
 mode = args.get('mode', None)
 
 ########################################################
@@ -30,17 +29,12 @@ mode = args.get('mode', None)
 ########################################################
 
 def build_url(query):
-    return base_url + '?' + urllib.urlencode(query)
+    return '%s?%s' % (base_url, urllib.urlencode(query))
 
-def add_sort_methods(video_typ):
-    if video_typ == 1: #TV
-        xbmcplugin.addSortMethod(int(sys.argv[1]), 22)
-        xbmcplugin.addSortMethod(int(sys.argv[1]), 10, '%D')
-    elif video_typ == 0: #Movies
-        xbmcplugin.addSortMethod(int(sys.argv[1]), 10, '%Y') #title, label2=year
-    xbmcplugin.addSortMethod(int(sys.argv[1]), 17) #Year
-    xbmcplugin.addSortMethod(int(sys.argv[1]), 8) #Duration
-    xbmcplugin.addSortMethod(int(sys.argv[1]), 28) #MPAA
+def add_common_sort_methods():
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_DURATION)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_MPAA_RATING)
 
 def add_directory(title, image_url, url):
     li = xbmcgui.ListItem(title, iconImage=image_url)
@@ -84,10 +78,6 @@ def add_tv_item(info, file_url):
         li.setInfo('video', { k: v })
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
 
-def play_video():
-    li = xbmcgui.ListItem(path=url)
-    xbmcplugin.setResolvedUrl( handle=addon_handle, succeeded=True, listitem=li)
-
 def retrieve_play_url(channel_id):
     play_url = ''
     jsonurl = urllib2.urlopen(channel_detail_url % (channel_id))
@@ -106,51 +96,47 @@ def retrieve_play_url(channel_id):
         xbmc.log("crackler playback error: " + str(channel_detail_map['status']['messageCodeDescription']), level=xbmc.LOGDEBUG)
 
     li = xbmcgui.ListItem(path=play_url)
-    xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=li)
+    xbmcplugin.setResolvedUrl(handle=addon_handle, succeeded=True, listitem=li)
 
 ########################################################
 ## BODY
 ########################################################
 
-
 if mode is None:
-    url_dat = build_url({'mode': 'movies_folder', 'foldername': 'Movies'})
-    add_directory('Movies', 'DefaultFolder.png', url_dat)
-    url_dat = build_url({'mode': 'tv_folder', 'foldername': 'TV'})
-    add_directory('TV', 'DefaultFolder.png', url_dat)
-
+    # show a choice of movies or tv
+    add_directory('Movies', 'DefaultFolder.png', build_url({'mode': 'movies_folder', 'foldername': 'Movies'}))
+    add_directory('TV', 'DefaultFolder.png', build_url({'mode': 'tv_folder', 'foldername': 'TV'}))
     xbmcplugin.endOfDirectory(addon_handle)
-
-elif mode[0] == 'movies_folder':
-    add_sort_methods(0)
+elif mode == 'movies_folder':
+    # show a list of movies
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, '%Y')
+    add_common_sort_methods()
     xbmcplugin.setContent(addon_handle, 'movies')
-
     jsonurl = urllib2.urlopen(movies_json_url)
     movies_map = json.loads(jsonurl.read())
     if movies_map['status']['messageCodeDescription'] == 'OK':
         for info in movies_map['Entries']:
-            add_movie_item(info, sys.argv[0]+'?mode=play_video&v_id='+str(info['ID']))
+            add_movie_item(info, build_url({'mode': 'play_video', 'v_id': str(info['ID'])}))
     xbmcplugin.endOfDirectory(addon_handle)
-
-elif mode[0] == 'tv_folder':
+elif mode == 'tv_folder':
+    # show a list of tv shows
     jsonurl = urllib2.urlopen(tv_json_url)
     tv_map = json.loads(jsonurl.read())
     if tv_map['status']['messageCodeDescription'] == 'OK':
         for info in tv_map['Entries']:
-            add_directory(info['Name'].encode('utf-8') , info['OneSheetImage_800_1200'], sys.argv[0]+'?mode=view_episodes&v_id='+str(info['ID']))
+            add_directory(info['Name'].encode('utf-8'), info['OneSheetImage_800_1200'], build_url({'mode': 'view_episodes', 'v_id': str(info['ID'])}))
     xbmcplugin.endOfDirectory(addon_handle)
-
-elif mode[0] == 'play_video':
-    args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
-    retrieve_play_url(args_ar['v_id'])
-elif mode[0] == 'view_episodes':
-    add_sort_methods(1)
+elif mode == 'play_video':
+    # play the selected video
+    retrieve_play_url(args['v_id'])
+elif mode == 'view_episodes':
+    # show a list of episodes for the selected tv show
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_EPISODE)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, '%D')
+    add_common_sort_methods()
     xbmcplugin.setContent(addon_handle, 'episodes')
-
-    args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
-    jsonurl = urllib2.urlopen(channel_detail_url % (args_ar['v_id']))
+    jsonurl = urllib2.urlopen(channel_detail_url % (args['v_id']))
     channel_detail_map = json.loads(jsonurl.read())
-
     if channel_detail_map['status']['messageCodeDescription'] == 'OK':
         for info in channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList']:
             pre_path = prog.findall(info['Thumbnail_Wide'])
