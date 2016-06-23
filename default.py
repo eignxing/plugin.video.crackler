@@ -1,206 +1,155 @@
 ########################################################
 ## IMPORT
 ########################################################
-import re, time
+import re
 import urllib2, urllib
 import urlparse
 import json
 import xbmcgui, xbmcplugin
-from xbmcgui import ListItem
-import datetime
 
 ########################################################
 ## VARS
 ########################################################
 
-channel_detail_url = 'http://api.crackle.com/Service.svc/channel/%s/folders/us?format=json'
-movies_json_url = 'http://api.crackle.com/Service.svc/browse/movies/full/all/alpha/us?format=json'
-tv_json_url = 'http://api.crackle.com/Service.svc/browse/shows/full/all/alpha/us?format=json'
-base_media_url = 'http://media-%s-am.crackle.com/%s'
-prog = re.compile(r''+'\/.\/.\/.{2}\/.{5}_')
-object_cnt = 0
-movies_map = ''
-tv_map = ''
-
 crackler_version = '1.0.6'
+
+en_countries = [ 'AU', 'CA', 'US' ]
+es_countries = [ 'AR', 'BO', 'CL', 'CO', 'CR', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'UY', 'VE' ]
+pt_countries = [ 'BR' ]
+
+supported_countries = {}
+for r, a, m in (en_countries, 'api', 'us'), (es_countries, 'api-es', 'es'), (pt_countries, 'api-br', 'br'):
+    for k in r:
+        supported_countries[k] = a, m
+
+country_json_url = 'http://api.crackle.com/Service.svc/geo/country?format=json'
+channel_json_url = 'http://%s.crackle.com/Service.svc/channel/%s/folders/%s?format=json'
+movies_json_url = 'http://%s.crackle.com/Service.svc/browse/movies/full/all/alpha/%s?format=json'
+tv_json_url = 'http://%s.crackle.com/Service.svc/browse/shows/full/all/alpha/%s?format=json'
+media_url = 'http://media-%s-am.crackle.com/%s480p_1mbps.mp4'
+prog = re.compile('\/.\/.\/.{2}\/.{5}_')
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
-args = urlparse.parse_qs(sys.argv[2][1:])
+args = dict([ (k, v[0]) for k, v in urlparse.parse_qs(sys.argv[2].replace('?', '')).items() ])
 mode = args.get('mode', None)
-
-jsonurl = urllib2.urlopen(movies_json_url)
-movies_map = json.loads(jsonurl.read())
-jsonurl = urllib2.urlopen(tv_json_url)
-tv_map = json.loads(jsonurl.read())
+country = args.get('country', None)
+if country not in supported_countries:
+    country = 'US'
 
 ########################################################
 ## FUNCTIONS
 ########################################################
 
 def build_url(query):
-    return base_url + '?' + urllib.urlencode(query)
+    return '%s?%s' % (base_url, urllib.urlencode(query))
 
-def add_sort_methods(video_typ):
-    if video_typ == 1: #TV
-        xbmcplugin.addSortMethod(int(sys.argv[1]), 22)
-        xbmcplugin.addSortMethod(int(sys.argv[1]), 10, '%D')
-    elif video_typ == 0: #Movies
-        xbmcplugin.addSortMethod(int(sys.argv[1]), 10, '%Y') #title, label2=year
-    xbmcplugin.addSortMethod(int(sys.argv[1]), 17) #Year
-    xbmcplugin.addSortMethod(int(sys.argv[1]), 8) #Duration
-    xbmcplugin.addSortMethod(int(sys.argv[1]), 28) #MPAA
+def add_common_sort_methods():
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_DURATION)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_MPAA_RATING)
 
 def add_directory(title, image_url, url):
     li = xbmcgui.ListItem(title, iconImage=image_url)
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-def add_video_item(title, image_url, file_url, m_index, map_typ, video_typ):
-    if map_typ != '':
-        li = xbmcgui.ListItem(title, iconImage=image_url)
-        li.setProperty('mimetype', 'video/mp4')
-        li.setProperty('IsPlayable', 'true')
-        temp_ryear = ''
-        temp_duration = ''
-        temp_title = ''
-        temp_genre = ''
-        temp_mpaa = ''
-        temp_plot = ''
-        temp_tvshowtitle = ''
-        temp_episode = ''
-        temp_season = ''
-        if video_typ == 0: #Movie
-            temp_ryear = str(map_typ['Entries'][m_index]['ReleaseYear'])
-            temp_duration = str(map_typ['Entries'][m_index]['DurationInSeconds'])
-            temp_title = map_typ['Entries'][m_index]['Title']
-            temp_genre = str(map_typ['Entries'][m_index]['Genre'])
-            temp_mpaa = str(map_typ['Entries'][m_index]['Rating'])
-            temp_plot = map_typ['Entries'][m_index]['Description']
-        elif video_typ == 1: #TV
-            temp_ryear = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['ReleaseDate'])
-            temp_duration = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['DurationInSeconds'])
-            temp_episode = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Episode'])
-            temp_season = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Season'])
-            if len(temp_episode) > 0 and len(temp_season) > 0:
-                temp_title = map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Title'] + ' (S' + temp_season + 'E' + temp_episode + ')' 
-            else:
-                temp_title = map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Title']
-            temp_genre = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Genre'])
-            temp_mpaa = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Rating'])
-            temp_plot = map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['Description']
-            temp_tvshowtitle = str(map_typ['FolderList'][0]['PlaylistList'][0]['MediaList'][m_index]['ParentChannelName'])
+def add_movie_item(info, file_url):
+    li = xbmcgui.ListItem(info['Name'].encode('utf-8'), iconImage=info['OneSheetImage_800_1200'])
+    li.setProperty('mimetype', 'video/mp4')
+    li.setProperty('IsPlayable', 'true')
+    duration = info['DurationInSeconds']
+    if duration is not None:
+        li.addStreamInfo('video', { 'duration': int(duration) })
+    d = { 'title': info['Title'], 'year': info['ReleaseYear'], 'genre': info['Genre'], 'mpaa': info['Rating'], 'plot': info['Description'] }
+    for k, v in d.items():
+        li.setInfo('video', { k: v })
+    xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
 
-        if len(temp_ryear) == 4:
-            li.setInfo('video', {'year': int(temp_ryear)})
-        elif temp_ryear.find('/') != -1:
-            li.setInfo('video', {'year': int(temp_ryear[-4:])})
-            date_spl = temp_ryear.split("/")
-            li.setInfo('video', {'aired': str(datetime.date(int(date_spl[2]), int(date_spl[0]), int(date_spl[1])).strftime('%Y-%m-%d'))})
-        if len(temp_duration) > 0 and temp_duration != "None":
-            li.addStreamInfo('video', { 'duration': int(temp_duration)})
-        if len(temp_title) > 0:
-            li.setInfo('video', {'title': temp_title})
-        if len(temp_genre) > 0:
-            li.setInfo('video', {'genre': temp_genre})
-        if len(temp_mpaa) > 0:
-            li.setInfo('video', {'mpaa': temp_mpaa})
-        if len(temp_plot) > 0:
-            li.setInfo('video', {'plot': temp_plot}) 
-        if len(temp_tvshowtitle) > 0:
-            li.setInfo('video', {'tvshowtitle': temp_tvshowtitle})
-        if len(temp_episode) > 0:
-            li.setInfo('video', {'episode': int(temp_episode)})
-        if len(temp_season) > 0:
-            li.setInfo('video', {'season': int(temp_season)})
+def add_tv_item(info, file_url):
+    li = xbmcgui.ListItem(info['Title'].encode('utf-8'), iconImage=info['OneSheetImage800x1200'])
+    li.setProperty('mimetype', 'video/mp4')
+    li.setProperty('IsPlayable', 'true')
+    li.addStreamInfo('video', { 'duration': int(info['DurationInSeconds']) })
+    d = { 'title': info['Title'], 'genre': info['Genre'], 'mpaa': info['Rating'], 'plot': info['Description'], 'tvshowtitle': info['ParentChannelName'] }
+    temp_season = info['Season']
+    temp_episode = info['Episode']
+    if len(temp_episode) > 0:
+        d['episode'] = int(temp_episode)
+    if len(temp_season) > 0:
+        d['season'] = int(temp_season)
+    if len(temp_episode) > 0 and len(temp_season) > 0:
+        d['title'] = u'%s (S%sE%s)' % (d['title'], temp_season, temp_episode) 
+    date = info['ReleaseDate'].split('/')
+    if len(date) == 3:
+        temp_rmonth = int(date[0])
+        temp_rday = int(date[1])
+        temp_ryear = int(date[2])
+        d['year'] = temp_ryear
+        d['aired'] = u'%d-%02d-%02d' % (temp_ryear, temp_rmonth, temp_rday)
 
-        xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
-
-def play_video():
-    li = xbmcgui.ListItem(path=url)
-    xbmcplugin.setResolvedUrl( handle=addon_handle, succeeded=True, listitem=li)
-
-def retrieve_play_url(channel_id):
-    play_url = ''
-    jsonurl = urllib2.urlopen(channel_detail_url % (channel_id))
-    channel_detail_map = json.loads(jsonurl.read())
-    if channel_detail_map['status']['messageCodeDescription'] == 'OK':
-        if int(channel_detail_map['Count']) > 0:
-            i = 0
-            while i < int(channel_detail_map['Count']):
-                if channel_detail_map['FolderList'][i]['Name'] == 'Movie':
-                    pre_path = prog.findall(channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['Thumbnail_Wide'])
-                    play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-                elif channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['MediaType'] == 'Feature Film':
-                    pre_path = prog.findall(channel_detail_map['FolderList'][i]['PlaylistList'][0]['MediaList'][0]['Thumbnail_Wide'])
-                    play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-                i += 1
-        else:
-            xbmc.log("crackler playback error: " + str(channel_detail_map['Count']), level=xbmc.LOGDEBUG)
-    else:
-        xbmc.log("crackler playback error: " + str(channel_detail_map['status']['messageCodeDescription']), level=xbmc.LOGDEBUG)
-
-    li = xbmcgui.ListItem(path=play_url)
-    xbmcplugin.setResolvedUrl(handle=int(sys.argv[1]), succeeded=True, listitem=li)
+    for k, v in d.items():
+        li.setInfo('video', { k: v })
+    xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
 
 ########################################################
 ## BODY
 ########################################################
 
-
 if mode is None:
-    url_dat = build_url({'mode': 'movies_folder', 'foldername': 'Movies'})
-    add_directory('Movies', 'DefaultFolder.png', url_dat)
-    url_dat = build_url({'mode': 'tv_folder', 'foldername': 'TV'})
-    add_directory('TV', 'DefaultFolder.png', url_dat)
-
+    # show your country
+    jsonurl = urllib2.urlopen(country_json_url)
+    country_data = json.loads(jsonurl.read())
+    r = country_data.get('CountryCode', None)
+    if r in supported_countries:
+        country = r
+    # show a choice of movies or tv
+    add_directory('Movies', 'DefaultFolder.png', build_url({'mode': 'movies_folder', 'foldername': 'Movies', 'country': country}))
+    add_directory('TV', 'DefaultFolder.png', build_url({'mode': 'tv_folder', 'foldername': 'TV', 'country': country}))
     xbmcplugin.endOfDirectory(addon_handle)
-
-elif mode[0] == 'movies_folder':
-    add_sort_methods(0)
+elif mode == 'movies_folder':
+    # show a list of movies
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, '%Y')
+    add_common_sort_methods()
     xbmcplugin.setContent(addon_handle, 'movies')
-
+    jsonurl = urllib2.urlopen(movies_json_url % (supported_countries[country][0], country))
+    movies_map = json.loads(jsonurl.read())
     if movies_map['status']['messageCodeDescription'] == 'OK':
-        object_cnt = int(movies_map['Count'])
-        if object_cnt > 0:
-            i = 0
-            while i < object_cnt:
-                if str(movies_map['Entries'][i]['DurationInSeconds']) != "None" and str(movies_map['Entries'][i]['UserRating']) != "None":
-                    add_video_item((movies_map['Entries'][i]['Name']).encode('utf-8'), movies_map['Entries'][i]['OneSheetImage_800_1200'], sys.argv[0]+'?mode=play_video&v_id='+str(movies_map['Entries'][i]['ID']), i, movies_map, 0)
-                i += 1
-
+        for info in movies_map['Entries']:
+            add_movie_item(info, build_url({'mode': 'play_video', 'v_id': str(info['ID']), 'country': country}))
     xbmcplugin.endOfDirectory(addon_handle)
-
-elif mode[0] == 'tv_folder':
-
-    if tv_map['status']['messageCodeDescription'] == 'OK':
-        object_cnt = int(tv_map['Count'])
-        if object_cnt > 0:
-            i = 0
-            while i < object_cnt:
-                add_directory((tv_map['Entries'][i]['Name']).encode('utf-8') , tv_map['Entries'][i]['OneSheetImage_800_1200'], sys.argv[0]+'?mode=view_episodes&indx='+str(i)+'&v_id='+str(tv_map['Entries'][i]['ID']))
-                i += 1
-    xbmcplugin.endOfDirectory(addon_handle)
-
-elif mode[0] == 'play_video':
-    args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
-    retrieve_play_url(args_ar['v_id'])
-elif mode[0] == 'view_episodes':
-    add_sort_methods(1)
-    xbmcplugin.setContent(addon_handle, 'episodes')
-    jsonurl = urllib2.urlopen(tv_json_url)
-    tv_map = json.loads(jsonurl.read())
-
-    args_ar = dict(urlparse.parse_qsl(sys.argv[2].replace('?','')))
-    jsonurl = urllib2.urlopen(channel_detail_url % (args_ar['v_id']))
+elif mode == 'play_video':
+    # play the selected video
+    play_url = ''
+    jsonurl = urllib2.urlopen(channel_json_url % (supported_countries[country][0], args['v_id'], country))
     channel_detail_map = json.loads(jsonurl.read())
-
     if channel_detail_map['status']['messageCodeDescription'] == 'OK':
-        object_cnt = int(len(channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList']))
-        if object_cnt > 0:
-            j = 0
-            while j < object_cnt:
-                pre_path = prog.findall(channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Thumbnail_Wide'])
-                play_url = base_media_url % ('us', pre_path[0]) + '480p_1mbps.mp4'
-                add_video_item((channel_detail_map['FolderList'][0]['PlaylistList'][0]['MediaList'][j]['Title']).encode('utf-8') , tv_map['Entries'][int(args_ar['indx'])]['OneSheetImage_800_1200'], play_url, j, channel_detail_map, 1)
-                j += 1
+        for folder in channel_detail_map['FolderList']:
+            for playlist in folder['PlaylistList']:
+                for info in playlist['MediaList']:
+                    if info['MediaType'] == 'Feature Film':
+                        play_url = media_url % (supported_countries[country][1], prog.findall(info['Thumbnail_Wide'])[0])
+                        break
+    li = xbmcgui.ListItem(path=play_url)
+    xbmcplugin.setResolvedUrl(handle=addon_handle, succeeded=True, listitem=li)
+elif mode == 'tv_folder':
+    # show a list of tv shows
+    jsonurl = urllib2.urlopen(tv_json_url % (supported_countries[country][0], country))
+    tv_map = json.loads(jsonurl.read())
+    if tv_map['status']['messageCodeDescription'] == 'OK':
+        for info in tv_map['Entries']:
+            add_directory(info['Name'].encode('utf-8'), info['OneSheetImage_800_1200'], build_url({'mode': 'view_episodes', 'v_id': str(info['ID']), 'country': country}))
+    xbmcplugin.endOfDirectory(addon_handle)
+elif mode == 'view_episodes':
+    # show a list of episodes for the selected tv show
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_EPISODE)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, '%D')
+    add_common_sort_methods()
+    xbmcplugin.setContent(addon_handle, 'episodes')
+    jsonurl = urllib2.urlopen(channel_json_url % (supported_countries[country][0], args['v_id'], country))
+    channel_detail_map = json.loads(jsonurl.read())
+    if channel_detail_map['status']['messageCodeDescription'] == 'OK':
+        for folder in channel_detail_map['FolderList']:
+            for playlist in folder['PlaylistList']:
+                for info in playlist['MediaList']:
+                    add_tv_item(info, media_url % (supported_countries[country][1], prog.findall(info['Thumbnail_Wide'])[0]))
     xbmcplugin.endOfDirectory(addon_handle)
