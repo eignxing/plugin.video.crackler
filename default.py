@@ -13,7 +13,7 @@ import xbmcgui, xbmcplugin
 
 crackler_version = '1.0.6'
 
-en_countries = [ 'AU', 'CA', 'US' ]
+en_countries = [ 'AS', 'AU', 'CA', 'FM', 'GU', 'MH', 'MP', 'PR', 'PW', 'US', 'VI' ]
 es_countries = [ 'AR', 'BO', 'CL', 'CO', 'CR', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'UY', 'VE' ]
 pt_countries = [ 'BR' ]
 
