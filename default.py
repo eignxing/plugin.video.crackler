@@ -61,8 +61,7 @@ def add_movie_item(info, file_url):
     if duration is not None:
         li.addStreamInfo('video', { 'duration': int(duration) })
     d = { 'title': info['Title'], 'year': info['ReleaseYear'], 'genre': info['Genre'], 'mpaa': info['Rating'], 'plot': info['Description'] }
-    for k, v in d.items():
-        li.setInfo('video', { k: v })
+    li.setInfo('video', d)
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
 
 def add_tv_item(info, file_url):
@@ -86,10 +85,26 @@ def add_tv_item(info, file_url):
         temp_ryear = int(date[2])
         d['year'] = temp_ryear
         d['aired'] = u'%d-%02d-%02d' % (temp_ryear, temp_rmonth, temp_rday)
-
-    for k, v in d.items():
-        li.setInfo('video', { k: v })
+    li.setInfo('video', d)
     xbmcplugin.addDirectoryItem(handle=addon_handle, url=file_url, listitem=li)
+
+def get_media_url(v_id, country):
+    jsonurl = urllib2.urlopen(channel_json_url % (supported_countries[country][0], args['v_id'], country))
+    channel_detail_map = json.loads(jsonurl.read())
+    if channel_detail_map['status']['messageCodeDescription'] == 'OK':
+        for folder in channel_detail_map['FolderList']:
+            for playlist in folder['PlaylistList']:
+                for info in playlist['MediaList']:
+                    if info['MediaType'] == 'Feature Film':
+                        v = prog.findall(info['Thumbnail_Wide'])
+                        if len(v):
+                            return media_url % (supported_countries[country][1], v[0])
+                    cc = info['ClosedCaptionFiles']
+                    if cc is not None:
+                        for info2 in cc:
+                            v = prog.findall(info2['Path'])
+                            if len(v):
+                                return media_url % (supported_countries[country][1], v[0])
 
 ########################################################
 ## BODY
@@ -119,17 +134,7 @@ elif mode == 'movies_folder':
     xbmcplugin.endOfDirectory(addon_handle)
 elif mode == 'play_video':
     # play the selected video
-    play_url = ''
-    jsonurl = urllib2.urlopen(channel_json_url % (supported_countries[country][0], args['v_id'], country))
-    channel_detail_map = json.loads(jsonurl.read())
-    if channel_detail_map['status']['messageCodeDescription'] == 'OK':
-        for folder in channel_detail_map['FolderList']:
-            for playlist in folder['PlaylistList']:
-                for info in playlist['MediaList']:
-                    if info['MediaType'] == 'Feature Film':
-                        play_url = media_url % (supported_countries[country][1], prog.findall(info['Thumbnail_Wide'])[0])
-                        break
-    li = xbmcgui.ListItem(path=play_url)
+    li = xbmcgui.ListItem(path=get_media_url(args['v_id'], country))
     xbmcplugin.setResolvedUrl(handle=addon_handle, succeeded=True, listitem=li)
 elif mode == 'tv_folder':
     # show a list of tv shows
